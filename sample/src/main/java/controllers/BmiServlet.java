@@ -22,7 +22,7 @@ public class BmiServlet extends HttpServlet {
 	protected void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException{
 		
-		response.getWriter().append("Served at").append(request.getContextPath());
+		
 	}
 	
 	@Override
@@ -33,18 +33,17 @@ public class BmiServlet extends HttpServlet {
 		double w = Double.parseDouble(request.getParameter("weight"));
 		
 		double bmi = Common.calcBmi(h, w);
+		String rank = Common.getBmiResult(bmi);
 		
 		request.setAttribute("bmi", bmi);
-		request.setAttribute("rank", getBmiResult(bmi));
+		request.setAttribute("rank", rank);
 		
 		request.getRequestDispatcher("/bmi_result.jsp").forward(request, response);
 		
 		
 	}
 
-	private Object getBmiResult(double bmi) {
-		// TODO 自動生成されたメソッド・スタブ
-		return null;
+	
 	}
-}
+
 	

@@ -1,7 +1,8 @@
 package controllers;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.time.LocalDate;
+import java.util.ArrayList;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -9,53 +10,76 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import beans.Player;
 import services.PlayerService;
+
 /**
- * Servlet implementation class Mapservlet
+ * Servlet implementation class MapServlet
  */
 @WebServlet("/Playerservlet")
 public class Playerservlet extends HttpServlet {
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) 
-			throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		
-		//MapService という別クラスからデータ（Map）を取得するための処理です。
-		//MapService クラスのインスタンス（＝オブジェクト）を作成
-		PlayerService service = new PlayerService();
-		//MapService の getMap() メソッドを呼び出しています。
+	private static final long serialVersionUID = 1L;
 
-//		このメソッドは HashMap<String, String> 型の値を返すように作られているので、
-		//その戻り値を map 変数に代入しています。
-		HashMap<String, String> map = service.getMapfromDB();
-		System.out.println("Map size: " + map.size());
-		
-		request.setAttribute("maps", map);
-		
+	/**
+	 * @see HttpServlet#HttpServlet()
+	 */
+	public Playerservlet() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+	/**
+	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse response)
+	 */
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		// Modelからページの表示に必要なデータを取得
+		ArrayList<Player> players = null;
+		PlayerService ps = new PlayerService();
+		players = ps.select();
+
+		request.setAttribute("players", players);
+
 		request.getRequestDispatcher("/Player.jsp").forward(request, response);
 	}
 
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		request.setCharacterEncoding("UTF-8");  // 文字化け防止
+		// 文字コード設定（フォームの日本語対応など）
+		request.setCharacterEncoding("UTF-8");
+	try {
+	    int countryId = Integer.parseInt(request.getParameter("country_id"));
+	    int uniformNum = Integer.parseInt(request.getParameter("uniform_num"));
+	    String position = request.getParameter("position");
+	    String name = request.getParameter("name");
+	    String club = request.getParameter("club");
+	    LocalDate birth = LocalDate.parse(request.getParameter("birth"));
+	    int height = Integer.parseInt(request.getParameter("height"));
+	    int weight = Integer.parseInt(request.getParameter("weight"));
 
-        String name = request.getParameter("name");
-        String club = request.getParameter("club");
+	    Player newPlayer = new Player();
+	    	newPlayer.setCountry_id(countryId);
+	    	newPlayer.setUniform_num(uniformNum);
+	    	newPlayer.setPosition(position);
+	    	newPlayer.setName(name);
+	    	newPlayer.setClub(club);
+	    	newPlayer.setBirth(birth);
+	    	newPlayer.setHeight(height);
+	    	newPlayer.setWeight(weight);
 
-        PlayerService service = new PlayerService();
+	    PlayerService ps = new PlayerService();
+	    ps.insert(newPlayer);  // INSERTを行うサービスメソッド
 
-        boolean success = service.insertPlayer(name, club);
-
-        if (success) {
-            // 登録成功なら一覧ページへリダイレクト
-            response.sendRedirect("/Player.jsp");
-        } else {
-            // 登録失敗時はエラーメッセージなど表示（簡単な例）
-            response.getWriter().println("登録に失敗しました。");
-        }
-    }
+	    // 登録完了後に一覧へリダイレクト
+	    response.sendRedirect("Playerservlet");
+	    
+		} catch (Exception e) {
+		e.printStackTrace();
+		response.getWriter().println("登録中にエラーが発生しました: " + e.getMessage());
+		}
+	}      
 }
-
-

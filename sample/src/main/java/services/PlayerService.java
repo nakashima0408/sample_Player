@@ -1,71 +1,159 @@
 package services;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
+import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.HashMap;
+import java.time.LocalDate;
+import java.util.ArrayList;
 
-public class PlayerService {
+import beans.Player;
+import utils.Db;
+
+public  class PlayerService extends Service<Player> {
 	
-	 // DB接続情報（環境に合わせて修正）
-    String url = "jdbc:mariadb://localhost:3306/soccer";
-    String user = "root";
-    String password = "root";
-	
-	public HashMap<String, String> getMapfromDB(){
-		HashMap<String, String > map = new HashMap<>();
-		
-        try {
-            // JDBCドライバのロード（必要に応じて）
-            Class.forName("org.mariadb.jdbc.Driver");
+	public ArrayList<Player> select() {
+		String sql = "select * from players";
 
-            try (Connection con = DriverManager.getConnection(url, user, password);
-                 PreparedStatement stmt = con.prepareStatement("SELECT name, club FROM players");
-                 ResultSet rs = stmt.executeQuery()) {
-                
-                	while (rs.next()) {
-                		String name = rs.getString("name");
-                		String club = rs.getString("club");
-                		System.out.println(name + ":" + club);
-                		map.put(name, club);
-                	}
+		ArrayList<Player> players = new ArrayList<>();
 
-            	}
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+		try (
+				Connection con = Db.open();
+				PreparedStatement ps = con.prepareStatement(sql);
+				ResultSet rs = ps.executeQuery();)
+		{
+			while (rs.next()) {
+				LocalDate birthDate = (rs.getDate("birth") != null) ? 
+						rs.getDate("birth").toLocalDate() : null ; 
+				
+				//java.sql.DateをJavaのjava.time.LocalDate型に変換しています。
+				//java.sql.DateはJDBCが使う日付型ですが、
+				//近年のJavaアプリケーションではjava.time.LocalDateを使うのが標準的で、
+				//扱いやすいからです。つまり、SQLの日付をJavaのLocalDateに変換して
+				//変数にセットしているということです。
+			    
+				players.add(
+						new Player(
+								rs.getInt("id"),
+								rs.getInt("country_id"),
+								rs.getInt("uniform_num"),
+								rs.getString("position"),
+								rs.getString("name"),
+								rs.getString("club"),
+								birthDate, 
+								rs.getInt("height"),
+								rs.getInt("weight")));
+			}
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
 
-        return map;
-	
+		return players;
 	}
-	public boolean insertPlayer(String name, String club) {
-		String sql = "INSERT INTO players(name, club) VALUES (?, ?)";
 
-            try {
-            	Class.forName("org.mariadb.jdbc.Driver");
-                try (Connection con = DriverManager.getConnection(url, user, password);
-                     PreparedStatement pstmt = con.prepareStatement(sql)) {
+	@Override
+	public Player selectById(int id) {
+		String sql = "select * from players where id = ?;";
 
-                    pstmt.setString(1, name);
-                    pstmt.setString(2, club);
+		Player player = null;
 
-                    int affectedRows = pstmt.executeUpdate();
-                    return affectedRows > 0;  // 挿入成功ならtrue
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                return false;  // エラー時はfalse
-            
-        
+		try (
+			Connection con = Db.open();
+			PreparedStatement ps = con.prepareStatement(sql);)
+		{
+			ps.setInt(1, id);
+			ResultSet rs = ps.executeQuery();
 
+			if (rs.next()) {
+				LocalDate birthDate = (rs.getDate("birth") != null) ? rs.getDate("birth").toLocalDate() : null ;  
+				player = new Player(
+						rs.getInt("id"),
+						rs.getInt("country_id"),
+						rs.getInt("uniform_num"),
+						rs.getString("position"),
+						rs.getString("name"),
+						rs.getString("club"),
+						birthDate,  // ここで使う
+						rs.getInt("height"),
+						rs.getInt("weight"));
+			}
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
+
+		return player;
 	}
-	
-	
-	}
-	public static void main(String[] args) {
-		// TODO 自動生成されたメソッド・スタブ
 
+	@Override
+	public int insert(Player object) {
+		String sql = "insert into players(country_id, uniform_num, position, name, club, birth, height, weight) values (?,?,?,?,?,?,?,?);";
+		int id = 0;
+
+		try (
+				Connection con = Db.open();
+				PreparedStatement ps = con.prepareStatement
+						(sql, java.sql.Statement.RETURN_GENERATED_KEYS);){
+			
+			ps.setInt(1, object.getCountry_id());
+			ps.setInt(2, object.getUniform_num());
+			ps.setString(3, object.getPosition());
+			ps.setString(4, object.getName());
+			ps.setString(5, object.getClub());
+			ps.setDate(6, Date.valueOf(object.getBirth()));
+			ps.setInt(7, object.getHeight());
+			ps.setInt(8, object.getWeight());
+			ps.executeUpdate();
+
+			ResultSet res = ps.getGeneratedKeys();
+			if (res.next()) {
+				id = res.getInt(1);
+			}
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
+		return id;
+	}
+
+	@Override
+	public void update(Player object) {
+		String sql = "update players set";
+		sql += " country_id = ?, uniform_num = ?, position = ?, name = ?, club = ?, birth = ?, height = ?, weight= ?";
+		sql += " where id = ?";
+
+		try (
+				Connection con = Db.open();
+				PreparedStatement ps = con.prepareStatement(sql);)
+		{
+			ps.setInt(1, object.getCountry_id());
+			ps.setInt(2, object.getUniform_num());
+			ps.setString(3, object.getPosition());
+			ps.setString(4, object.getName());
+			ps.setString(5, object.getClub());
+			ps.setDate(6, Date.valueOf(object.getBirth()));
+			ps.setInt(7, object.getHeight());
+			ps.setInt(8, object.getWeight());
+			ps.setInt(9, object.getId());
+			ps.executeUpdate();
+
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
+	}
+
+	@Override
+	public void delete(int id) {
+		String sql = "delete from players where id = ?";
+
+		try (
+				Connection con = Db.open();
+				PreparedStatement ps = con.prepareStatement(sql);)
+		{
+			ps.setInt(1, id);
+			ps.executeUpdate();
+
+		} catch (Exception se) {
+			se.printStackTrace();
+		}
 	}
 
 }
